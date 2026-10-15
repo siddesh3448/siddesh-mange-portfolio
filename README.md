@@ -72,6 +72,7 @@ The companion models are original geometry created in `js/companions-3d.js`; no 
 ├── index.html
 ├── README.md
 ├── COPYRIGHT.md
+├── favicon.svg
 ├── ProfilePhotoHeadshot.png
 ├── css/
 │   └── styles.css

@@ -449,7 +449,12 @@ function getPageHeight() {
   );
 }
 
+function getViewportWidth() {
+  return document.documentElement.clientWidth || window.innerWidth;
+}
+
 function getObstacles() {
+  const horizontalPadding = getViewportWidth() < 680 ? 0 : 5;
   return Array.from(
     document.querySelectorAll(
       "h1, h2, h3, h4, p, a, button, input, textarea, select, .project-preview, figure, .program-list li, .certificate-list li",
@@ -459,8 +464,8 @@ function getObstacles() {
     .map((element) => {
       const bounds = element.getBoundingClientRect();
       return {
-        left: bounds.left + window.scrollX - 5,
-        right: bounds.right + window.scrollX + 5,
+        left: bounds.left + window.scrollX - horizontalPadding,
+        right: bounds.right + window.scrollX + horizontalPadding,
         top: bounds.top + window.scrollY - 5,
         bottom: bounds.bottom + window.scrollY + 5,
       };
@@ -469,7 +474,7 @@ function getObstacles() {
 }
 
 function getModelSize() {
-  return window.innerWidth < 680 ? MOBILE_MODEL_SIZE : MODEL_SIZE;
+  return getViewportWidth() < 680 ? MOBILE_MODEL_SIZE : MODEL_SIZE;
 }
 
 function rectangleIsClear(x, y, obstacles, size = getModelSize()) {
@@ -500,18 +505,18 @@ function pathIsClear(start, end, obstacles, size) {
 }
 
 function buildMovementMap(characters) {
-  const width = document.documentElement.clientWidth;
+  const width = getViewportWidth();
   const pageHeight = getPageHeight();
   const mobile = width < 680;
   const size = mobile ? MOBILE_MODEL_SIZE : MODEL_SIZE;
   const stepY = mobile ? 28 : 88;
   const xPositions = [];
   if (mobile) {
-    for (let x = -5; x + size.width < width - 4; x += size.width + 4) {
+    for (let x = 0; x + size.width <= width; x += size.width + 4) {
       xPositions.push(x);
     }
-    if (xPositions.length === 0 || xPositions[xPositions.length - 1] < width - size.width + 5) {
-      xPositions.push(Math.max(-5, width - size.width + 5));
+    if (xPositions.length === 0 || xPositions[xPositions.length - 1] < width - size.width) {
+      xPositions.push(Math.max(0, width - size.width));
     }
   }
   if (!mobile) {
@@ -636,7 +641,7 @@ function createRenderer(canvas) {
     depth: true,
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
-  renderer.setSize(window.innerWidth, window.innerHeight, false);
+  renderer.setSize(getViewportWidth(), window.innerHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.16;
@@ -701,7 +706,7 @@ export function initializeCompanions3D(reducedMotion) {
   let frameCount = 0;
 
   function updateCamera() {
-    const width = window.innerWidth;
+    const width = getViewportWidth();
     const height = window.innerHeight;
     camera.left = -width / 2;
     camera.right = width / 2;
@@ -712,7 +717,7 @@ export function initializeCompanions3D(reducedMotion) {
   }
 
   function updateCharacterPositions() {
-    const width = window.innerWidth;
+    const width = getViewportWidth();
     const height = window.innerHeight;
     const small = width < 680;
     characters.forEach((character) => {
@@ -727,6 +732,16 @@ export function initializeCompanions3D(reducedMotion) {
       character.root.scale.multiplyScalar(
         character.moodUntil > performance.now() || character.focused || character === pointerCharacter ? 1.04 : 1,
       );
+      const controlWidth = `${size.width}px`;
+      const controlHeight = `${size.height}px`;
+      if (character.control.style.width !== controlWidth) {
+        character.control.style.width = controlWidth;
+      }
+      if (character.control.style.height !== controlHeight) {
+        character.control.style.height = controlHeight;
+      }
+      character.control.style.transform =
+        `translate3d(${character.x}px, ${character.y - window.scrollY}px, 0)`;
     });
   }
 
@@ -750,7 +765,11 @@ export function initializeCompanions3D(reducedMotion) {
       character.shadow.material.opacity = 0.24;
       renderOnce();
     });
-    character.control.addEventListener("click", () => setReaction(character, "wave"));
+    character.control.addEventListener("click", (event) => {
+      if (event.detail === 0) {
+        setReaction(character, "wave");
+      }
+    });
   });
 
   function startMovement(delay = 1000) {
@@ -794,8 +813,9 @@ export function initializeCompanions3D(reducedMotion) {
 
   function nearestCharacter(clientX, clientY) {
     const size = getModelSize();
+    const width = getViewportWidth();
     pointer.set(
-      (clientX / window.innerWidth) * 2 - 1,
+      (clientX / width) * 2 - 1,
       -(clientY / window.innerHeight) * 2 + 1,
     );
     updateCharacterPositions();
@@ -846,7 +866,7 @@ export function initializeCompanions3D(reducedMotion) {
       if (Math.hypot(dx, dy) > 4) {
         drag.moved = true;
         const size = getModelSize();
-        drag.character.x = Math.max(0, Math.min(window.innerWidth - size.width, event.clientX + window.scrollX - drag.offsetX));
+        drag.character.x = Math.max(0, Math.min(getViewportWidth() - size.width, event.clientX + window.scrollX - drag.offsetX));
         drag.character.y = Math.max(0, Math.min(getPageHeight() - size.height, event.clientY + window.scrollY - drag.offsetY));
         drag.character.path = [];
         drag.character.walking = false;
@@ -879,7 +899,8 @@ export function initializeCompanions3D(reducedMotion) {
     if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) {
       return;
     }
-    const character = nearestCharacter(event.clientX, event.clientY);
+    const character = characters.find((item) => item.control === event.target) ??
+      nearestCharacter(event.clientX, event.clientY);
     if (!character) {
       return;
     }
@@ -889,14 +910,13 @@ export function initializeCompanions3D(reducedMotion) {
       movementTimer = 0;
     }
     const size = getModelSize();
-    const screenX = character.x + size.width / 2;
     drag = {
       character,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      offsetX: event.clientX - screenX,
-      offsetY: event.clientY + window.scrollY - character.y - size.height / 2,
+      offsetX: event.clientX + window.scrollX - character.x,
+      offsetY: event.clientY + window.scrollY - character.y,
       moved: false,
     };
     character.dragged = true;
@@ -1047,6 +1067,12 @@ export function initializeCompanions3D(reducedMotion) {
   }
 
   function handleResize() {
+    characters.forEach((character) => {
+      character.path = [];
+      character.pathIndex = 0;
+      character.target = null;
+      character.walking = false;
+    });
     updateCamera();
     nodes = buildMovementMap(characters);
     requestRender();

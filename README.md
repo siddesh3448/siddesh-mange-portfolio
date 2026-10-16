@@ -38,7 +38,7 @@ The site pairs an editorial, responsive layout with a restrained cosmic backgrou
 - Fixed canvas galaxy background with slowly drifting stars and subtle glows; clicking near a star on supported desktop pointers triggers a falling-star trail.
 - Desktop custom cursor on supported fine-pointer devices, with responsive hover and press states.
 - Scroll-triggered reveals, active-section navigation, and scroll progress indicator.
-- Eight original miniature 3D companions, procedurally modeled from local Three.js geometry in one shared WebGL scene, with walking, blinking, waving, jumping, hover reactions, and pointer/touch dragging.
+- Eight original miniature 3D companions, procedurally modeled from local Three.js geometry in one shared WebGL scene, with walking, blinking, waving, jumping, hover reactions, and pointer/touch dragging. Pet-aligned touch targets support tap reactions and drags while leaving page scrolling available outside the pets.
 - About section with the original local profile portrait, a subtle orbit, light sweep, and desktop pointer parallax.
 - Keyboard-visible focus states and a skip-to-content link.
 - Reduced-motion handling for companion roaming and animation, portrait effects, and the cosmic canvas.
